@@ -1,4 +1,3 @@
-#pragma once
 #include "Configuration.h"
 #include "Utils.h"
 #include "MergeMapperPluginAPI.h"

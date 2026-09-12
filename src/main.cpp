@@ -4,6 +4,7 @@
 #include "Settings.h"
 #include "Papyrus.h"
 #include "DescriptionFrameworkAPI.h"
+#include "Version.h"
 
 namespace DescriptionFrameworkAPI
 {
@@ -14,12 +15,13 @@ namespace DescriptionFrameworkAPI
 	struct DescriptionFrameworkInterface001 : IDescriptionFrameworkInterface001
 	{
 		virtual unsigned int GetBuildNumber() {
-			return (Version::MAJOR >> 8) + (Version::MINOR >> 4) + Version::PATCH;
+			return (Project::Version::MAJOR >> 8) + (Project::Version::MINOR >> 4) + Project::Version::PATCH;
 		};
 
-		virtual const char* GetDescription(RE::TESForm* a_form){
-			auto result = ConfigurationDatabase::GetSingleton()->GetDescriptionForObject(a_form).c_str();
-			return result;
+		virtual const char* GetDescription(RE::TESForm* a_form)
+		{
+			const auto result = new std::string(ConfigurationDatabase::GetSingleton()->GetDescriptionForObject(a_form));
+			return result->c_str();
 		};
 	};
 
@@ -92,7 +94,7 @@ void InitializeLog()
 		stl::report_and_fail("Failed to find standard logging directory"sv);
 	}
 
-	*path /= Version::PROJECT;
+	*path /= Project::NAME;
 	*path += ".log"sv;
 	auto sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(path->string(), true);
 
@@ -109,35 +111,20 @@ void InitializeLog()
 	spdlog::set_default_logger(std::move(log));
 	spdlog::set_pattern("[%H:%M:%S:%e] %v"s);
 
-	logger::info(FMT_STRING("{} v{}"), Version::PROJECT, Version::NAME);
+	logger::info(FMT_STRING("{} v{}"), Project::NAME, Project::Version::NAME);
 }
 
-extern "C" DLLEXPORT constinit auto SKSEPlugin_Version = []() {
-	SKSE::PluginVersionData v;
-	v.PluginVersion(Version::MAJOR);
-	v.PluginName(Version::PROJECT);
-	v.AuthorName("Nightfallstorm");
-	v.UsesAddressLibrary(true);
-	v.CompatibleVersions({ SKSE::RUNTIME_SSE_LATEST_AE });
-	v.UsesNoStructs(true);
+SKSEPluginInfo(
+	.Version = {Project::Version::MAJOR, Project::Version::MINOR, Project::Version::PATCH},
+	.Name = Project::NAME,
+	.Author = Project::AUTHOR,
+	.SupportEmail = "N/A",
+	.StructCompatibility = SKSE::StructCompatibility::Independent,
+)
 
-	return v;
-}();
-
-extern "C" DLLEXPORT bool SKSEAPI SKSEPlugin_Query(const SKSE::QueryInterface* a_skse, SKSE::PluginInfo* a_info)
+extern "C" DLLEXPORT const char* APIENTRY GetPluginVersion()
 {
-	a_info->infoVersion = SKSE::PluginInfo::kVersion;
-	a_info->name = Version::PROJECT.data();
-	a_info->version = Version::MAJOR;
-
-	if (a_skse->IsEditor()) {
-		logger::critical("Loaded in editor, marking as incompatible"sv);
-		return false;
-	}
-
-	const auto ver = a_skse->RuntimeVersion();
-
-	return true;
+	return Project::Version::NAME.data();
 }
 
 SKSEPluginLoad(const SKSE::LoadInterface* a_skse)
@@ -146,7 +133,8 @@ SKSEPluginLoad(const SKSE::LoadInterface* a_skse)
 	InitializeLog();
 	logger::info("loaded plugin");
 
-	SKSE::Init(a_skse);
+	constexpr auto initInfo = SKSE::InitInfo {.trampoline = true, .trampolineSize = hooks::trampolineHookCount * 0x14 };
+	SKSE::Init(a_skse, initInfo);
 
 	auto messaging = SKSE::GetMessagingInterface();
 	messaging->RegisterListener(MessageHandler);

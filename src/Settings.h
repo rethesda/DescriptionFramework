@@ -1,6 +1,5 @@
 #pragma once
 #include <SimpleIni.h>
-#include <robin_hood.h>
 #include "Utils.h"
 
 class Settings
@@ -30,21 +29,19 @@ public:
 		ConsoleFont,
 	};
 
-	const char* GetFontColor() {
-		if (tweaks.color == "") {
+	std::string GetFontColor() {
+		if (tweaks.color.empty()) {
 			return "";
-		} else {
-			return std::format("<font color='{}'>", tweaks.color).c_str();
 		}
+		return std::format("<font color='{}'>", tweaks.color);
 	}
 
-	const char* GetFontSize()
+	std::string GetFontSize()
 	{
 		if (tweaks.size == -1) {
 			return "";
-		} else {
-			return std::format("<font size='{}'>", tweaks.size).c_str();
 		}
+		return std::format("<font size='{}'>", tweaks.size);
 	}
 
 	const char* GetFontFace() {
@@ -80,12 +77,11 @@ public:
 		}
 	}
 
-	const char* GetAlignment() {
-		if (tweaks.alignment == "") {
+	std::string GetAlignment() {
+		if (tweaks.alignment.empty()) {
 			return "";
-		} else {
-			return std::format("<p align='{}'>", tweaks.alignment).c_str();
 		}
+		return std::format("<p align='{}'>", tweaks.alignment);
 	}
 
 	const char* GetFontString()
@@ -143,5 +139,5 @@ private:
 		}
 	};
 
-	robin_hood::unordered_flat_map<std::string, bool> settingsMap{};
+	std::map<std::string, bool> settingsMap{};
 };

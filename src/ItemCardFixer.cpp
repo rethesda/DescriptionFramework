@@ -1,4 +1,3 @@
-#pragma once
 #include "ItemCardFixer.h"
 #include "Settings.h"
 
@@ -132,45 +131,6 @@ void ItemCardFixer::fixBackground(const char* a_displayLabel)
 		displayLabel.SetMember("border", true);
 		displayLabel.SetMember("borderColor", descriptionDebugBorder);
 	}
-
-	fixTest(backgroundX.GetNumber(), backgroundY.GetNumber(), backgroundWidth.GetNumber(), backgroundHeight.GetNumber());
-}
-
-void ItemCardFixer::fixTest(float x, float y, float width, float height) {
-	return; // TODO: Use for scale9Grid fixing, also consider this code for making text fields for ingredient support
-	RE::GFxValue args[4];
-	RE::GFxValue rectangle;
-	RE::GFxValue itemcard;
-	RE::GFxValue grid;
-	RE::GFxValue background;
-	RE::GFxValue scale9Grid;
-
-	// Magic numbers courtesy of Nem
-	args[0].SetNumber(30.0f);
-	args[1].SetNumber(79.0f);
-	args[2].SetNumber(370.0f);
-	args[3].SetNumber(44.0f);
-
-
-	uiMovie->CreateObject(&rectangle, "flash.geom.Rectangle", args, 4);
-	logger::info("Rectangle type {}", rectangle.GetType());
-	uiMovie->GetVariable(&itemcard, "_root.Menu_mc.itemCardFadeHolder.ItemCard_mc");
-	logger::info("itemCard type {}", itemcard.GetType());
-	itemcard.GetMember("scale9Grid", &grid);
-	logger::info("grid type before {}", grid.GetType());
-	itemcard.SetMember("scale9Grid", rectangle);
-	itemcard.GetMember("scale9Grid", &grid);
-	logger::info("grid type after {}", grid.GetType());
-
-	itemcard.GetMember("background", &background);
-	background.GetMember("scale9Grid", &scale9Grid);
-	logger::info("scale9Grid type before {}", scale9Grid.GetType());
-	uiMovie->Invoke("_root.Menu_mc.itemCardFadeHolder.ItemCard_mc.background.scale9Grid", nullptr, &rectangle, 4);
-	background.GetMember("scale9Grid", &scale9Grid);
-	logger::info("scale9Grid type before manual set {}", scale9Grid.GetType());
-	background.SetMember("scale9Grid", rectangle);
-	background.GetMember("scale9Grid", &scale9Grid);
-	logger::info("scale9Grid type after {}", scale9Grid.GetType());
 }
 
 void ItemCardFixer::handleArmor()
@@ -270,7 +230,10 @@ void ItemCardFixer::fixWeapon()
 	itemCard.GetMember("WeaponChargeMeter", &weaponChargeLabel);
 	itemInfo.GetMember(descriptionVar, &DFdescription);
 	itemInfo.GetMember("effects", &effects);
-	logger::debug("types {} {} {}", weaponChargeLabel.GetType(), DFdescription.GetType(), effects.GetType());
+	logger::debug("types {} {} {}",
+		static_cast<int>(weaponChargeLabel.GetType()),
+		static_cast<int>(DFdescription.GetType()), static_cast<int>(effects.GetType())
+	);
 	if (weaponChargeLabel.IsDisplayObject() && DFdescription.IsString() && effects.IsString()) {
 		if (!strcmp(DFdescription.GetString(), effects.GetString())) {
 			// effects is same as description, turn off weapon charge label
@@ -460,6 +423,7 @@ void ItemCardFixer::applyDescription()
 			handleHousePart();
 			break;
 		}
+	default:;
 	}
 }
 
@@ -562,5 +526,6 @@ void ItemCardFixer::fixItemCard()
 			fixHousePart();
 			break;
 		}
+	default:;
 	}
 }

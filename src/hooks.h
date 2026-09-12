@@ -6,10 +6,11 @@
 
 namespace hooks
 {
-	static inline std::string debugDescription = 
+	static inline std::string debugDescription =
 		"<font color='#AAFF33'> My Custom <font color=\"#FFFFFF\">White</font> Text Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aliquam risus massa, tincidunt nec pulvinar non, porttitor quis augue. Sed lacinia risus justo, eu pulvinar nulla dignissim nec.";
 
 	namespace ItemCardHooks {
+		static auto constexpr trampolineHookCount = 8;
 		static const char* getDescription(RE::TESForm* a_item)
 		{
 			logger::info("Looking up {:x}", a_item ? a_item->formID : 0);
@@ -388,6 +389,7 @@ namespace hooks
 		}
 	}
 
+	static auto constexpr trampolineHookCount = ItemCardHooks::trampolineHookCount;
 	static inline void InstallHooks()
 	{
 		ItemCardHooks::ItemCardPopulateHook::Install();

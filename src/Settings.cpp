@@ -49,7 +49,7 @@ void Settings::Tweaks::Load(CSimpleIniA& a_ini)
 	logger::info("Loaded settings");
 	logger::info("prefix={}", prefix);
 	logger::info("suffix={}", suffix);
-	logger::info("font={}", font);
+	logger::info("font={}", static_cast<int>(font));
 	logger::info("color={}", color);
 	logger::info("size={}", size);
 	logger::info("alignment={}", alignment);

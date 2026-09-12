@@ -1,39 +1,27 @@
 cmake_minimum_required(VERSION 3.22)
-set(NAME "DescriptionFramework")
-set(VERSION 2.1.2)
 
-# ---- Cache build vars ----
-
-macro(set_from_environment VARIABLE)
-	if (NOT DEFINED ${VARIABLE} AND DEFINED ENV{${VARIABLE}})
-		set(${VARIABLE} $ENV{${VARIABLE}})
-	endif ()
-endmacro()
-
-set_from_environment(VCPKG_ROOT)
-add_compile_definitions(SKYRIM)
-set(CommonLibPath "extern/CommonLibSSE-NG")
-set(CommonLibName "CommonLibSSE")
-set(GameVersion "Skyrim")
-
-message(
-	STATUS
-	"Building ${NAME} ${VERSION} for ${SkyrimVersion} at ${SkyrimPath} with ${CommonLibName} at ${CommonLibPath}."
-)
-
-if (DEFINED VCPKG_ROOT)
-	set(CMAKE_TOOLCHAIN_FILE "${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
-	set(VCPKG_TARGET_TRIPLET "x64-windows-static" CACHE STRING "")
+if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/local-env.cmake)
+	include(${CMAKE_CURRENT_SOURCE_DIR}/local-env.cmake)
 else ()
 	message(
-		WARNING
-		"Variable VCPKG_ROOT is not set. Continuing without vcpkg."
+			FATAL_ERROR
+			"local-env.cmake not found. This is required for proper linux cross-compiling. See `local-env-TEMPLATE.cmake` for details"
 	)
-endif ()
+endif()
 
-set(Boost_USE_STATIC_RUNTIME OFF CACHE BOOL "")
 
-# ---- Project ----
+# -------------- Project Setup -----------------------
+
+set(NAME "DescriptionFramework")
+set(AUTHOR "nightfallstorm")
+set(VERSION 2.1.2)
+
+
+# For Clang-CL only, ensures IDEs like CLION properly see CLIB-NG headers
+add_compile_options(
+		/clang:-isystem/${CLIB_PATH}/include # Custom include to ensure automatic CLIB inclusion
+		/clang:-isystem/${CLIB_PATH}/extern/openvr/headers # Custom include to ensure automatic CLIB inclusion
+)
 
 project(
 	${NAME}
@@ -55,11 +43,8 @@ configure_file(
 
 # ---- Include guards ----
 
-if(PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
-	message(
-		FATAL_ERROR
-			"In-source builds not allowed. Please make a new directory (called a build directory) and run CMake from there."
-	)
+if("${PROJECT_SOURCE_DIR}" STREQUAL "${PROJECT_BINARY_DIR}")
+	message(FATAL_ERROR "in-source builds are not allowed")
 endif()
 
 # ---- Globals ----
@@ -68,29 +53,17 @@ add_compile_definitions(
 	SKSE_SUPPORT_XBYAK
 )
 
-if (MSVC)
-	if (NOT ${CMAKE_GENERATOR} STREQUAL "Ninja")
-		add_compile_options(
-			/MP	# Build with Multiple Processes
-		)
-	endif ()
-endif ()
-
-set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
-set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_DEBUG OFF)
-
-set(Boost_USE_STATIC_LIBS ON)
-set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STRING "")
 
 # ---- Dependencies ----
 
-find_package(robin_hood CONFIG REQUIRED)
-if (DEFINED CommonLibPath AND NOT ${CommonLibPath} STREQUAL "" AND IS_DIRECTORY ${CommonLibPath})
-	add_subdirectory(${CommonLibPath} ${CommonLibName} EXCLUDE_FROM_ALL)
+set(CommonLibName "CommonLibSSE")
+
+if (DEFINED CLIB_PATH AND NOT ${CLIB_PATH} STREQUAL "" AND IS_DIRECTORY ${CLIB_PATH})
+	add_subdirectory(${CLIB_PATH} ${CommonLibName} EXCLUDE_FROM_ALL)
 else ()
 	message(
-		FATAL_ERROR
-		"Variable ${CommonLibName}Path is not set."
+			FATAL_ERROR
+			"Variable CLIB_PATH is not found. Value is ${CLIB_PATH}"
 	)
 endif()
 
@@ -148,9 +121,8 @@ target_include_directories(
 
 target_link_libraries(
 	${PROJECT_NAME}
-	PUBLIC
+	PRIVATE
 		${CommonLibName}::${CommonLibName}
-		robin_hood::robin_hood
 )
 
 target_precompile_headers(
@@ -192,6 +164,10 @@ if (MSVC)
 			/Zc:wchar_t	# wchar_t Is Native Type
 
 			/external:anglebrackets
+			/external:W0
+
+			/W4	# Warning level
+			/WX # Warning level (warnings are errors)
 
 			"$<$<CONFIG:DEBUG>:>"
 			"$<$<CONFIG:RELEASE>:/Zc:inline;/JMC-;/Ob3>"
@@ -200,6 +176,7 @@ if (MSVC)
 	target_link_options(
 		${PROJECT_NAME}
 		PRIVATE
+			/WX	# Treat Linker Warnings as Errors
 
 			"$<$<CONFIG:DEBUG>:/INCREMENTAL;/OPT:NOREF;/OPT:NOICF>"
 			"$<$<CONFIG:RELEASE>:/INCREMENTAL:NO;/OPT:REF;/OPT:ICF;/DEBUG:FULL>"

@@ -1,11 +1,12 @@
 #include "Papyrus.h"
 #include "Configuration.h"
+#include "Version.h"
 
 namespace Papyrus
 {
 	inline std::vector<std::int32_t> GetVersion(RE::StaticFunctionTag*)
 	{
-		return { Version::MAJOR, Version::MINOR, Version::PATCH };
+		return { Project::Version::MAJOR, Project::Version::MINOR, Project::Version::PATCH };
 	}
 
 	inline RE::TESBoundObject* GetBaseObject(RE::TESForm* a_object)
