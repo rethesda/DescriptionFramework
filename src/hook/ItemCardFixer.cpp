@@ -1,22 +1,22 @@
 #include "ItemCardFixer.h"
-#include "Settings.h"
+#include "../config/Settings.h"
 
 void ItemCardFixer::handleEffects()
 {
 	// Insert description into effects
-	auto effectsStr = std::string("");
 	RE::GFxValue effects;
 	itemInfo.GetMember("effects", &effects);
-	if (effects.IsString() && std::strcmp(effects.GetString(), "undefined") && std::strcmp(effects.GetString(), "")) {
-		effectsStr = std::string(effects.GetString());
-		effectsStr.erase(remove(effectsStr.begin(), effectsStr.end(), ' '), effectsStr.end());
-		if (!effectsStr.empty()) {
-			effectsStr = std::string(effects.GetString()) + "\n";
-		}
+
+	std::string effectsStr = effects.IsString() ? effects.GetString() : "";
+	auto trimmedEffectsStr = std::string(effectsStr);
+	trimmedEffectsStr.erase(std::ranges::remove(trimmedEffectsStr, ' ').begin(), trimmedEffectsStr.end());
+
+	std::string effectsWithDesc = this->description;
+	if (!trimmedEffectsStr.empty() && std::strcmp(trimmedEffectsStr.c_str(), "undefined") != 0) {
+		effectsWithDesc = effectsStr + "\n" + this->description;
 	}
 
-	auto effectsDesc = effectsStr + this->description;
-	itemInfo.SetMember("effects", effectsDesc.c_str());
+	itemInfo.SetMember("effects", effectsWithDesc.c_str());
 }
 
 void ItemCardFixer::handleSoulLVL()
@@ -27,7 +27,7 @@ void ItemCardFixer::handleSoulLVL()
 	itemInfo.GetMember("soulLVL", &soulLVL);
 	if (soulLVL.IsString() && std::strcmp(soulLVL.GetString(), "undefined") && std::strcmp(soulLVL.GetString(), "")) {
 		soulStr = std::string(soulLVL.GetString());
-		soulStr.erase(remove(soulStr.begin(), soulStr.end(), ' '), soulStr.end());
+		soulStr.erase(std::ranges::remove(soulStr, ' ').begin(), soulStr.end());
 		if (!soulStr.empty()) {
 			soulStr = std::string(soulLVL.GetString()) + "\n";
 		}
@@ -155,7 +155,7 @@ void ItemCardFixer::handleBook()
 	itemInfo.GetMember("description", &desc);
 	if (desc.IsString() && std::strcmp(desc.GetString(), "undefined") && std::strcmp(desc.GetString(), "")) {
 		origDescStr = std::string(desc.GetString());
-		origDescStr.erase(remove(origDescStr.begin(), origDescStr.end(), ' '), origDescStr.end());
+		origDescStr.erase(std::ranges::remove(origDescStr, ' ').begin(), origDescStr.end());
 		if (!origDescStr.empty()) {
 			origDescStr = std::string(desc.GetString()) + "\n";
 		}
@@ -325,7 +325,7 @@ void ItemCardFixer::fixHousePart()
 
 void ItemCardFixer::applyDescription()
 {
-	logger::info("Applying description {}", description);
+	logger::debug("Applying description {}", description);
 	switch (type) {
 	case ICT_ARMOR:
 		{

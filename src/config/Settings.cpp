@@ -45,13 +45,4 @@ void Settings::Tweaks::Load(CSimpleIniA& a_ini)
 	//detail::get_value(a_ini, widthScale, section, "fWidthScale", ";Item box will be X times wider/skinnier when applying descriptions");
 	//detail::get_value(a_ini, heightOffset, section, "fHeightOffset", ";Item box will be X units higher/lower when applying descriptions. Useful when changing the height scale");
 	//detail::get_value(a_ini, widthOffset, section, "fWidthOffset", ";Item box will be X units to the right/left when applying descriptions. Useful when changing the width scale");
-
-	logger::info("Loaded settings");
-	logger::info("prefix={}", prefix);
-	logger::info("suffix={}", suffix);
-	logger::info("font={}", static_cast<int>(font));
-	logger::info("color={}", color);
-	logger::info("size={}", size);
-	logger::info("alignment={}", alignment);
-	logger::info("debugMode={}", debugMode);
 }

@@ -1,5 +1,5 @@
 #pragma once
-#include "Settings.h"
+#include "../config/Settings.h"
 
 enum ItemCardType : int
 {
@@ -25,10 +25,11 @@ enum ItemCardType : int
 class ItemCardFixer
 {
 public:
-	static inline constexpr auto descriptionVar = "DF_description";
-	static inline constexpr auto appliedDescriptionVar = "DF_fixed";
-	static inline constexpr auto itemInfoVar = "itemInfo";
-	static inline constexpr auto typeVar = "type";
+	static constexpr auto descriptionTag = "DF_tag";
+	static constexpr auto descriptionVar = "DF_description";
+	static constexpr auto appliedDescriptionVar = "DF_fixed";
+	static constexpr auto itemInfoVar = "itemInfo";
+	static constexpr auto typeVar = "type";
 
 	static inline int debugBorder = 0xFC0303;
 	static inline int descriptionDebugBorder = 0x02f70f;
@@ -38,9 +39,8 @@ public:
 
 	struct CollectDFVariables : RE::GFxValue::ObjectVisitor
 	{
-	public:
 		// Collect DF variables so we can erase them when reverting description
-		virtual void Visit(const char* a_name, [[maybe_unused]] const RE::GFxValue& a_val) override {
+		void Visit(const char* a_name, [[maybe_unused]] const RE::GFxValue& a_val) override {
 			if (std::string(a_name).find("DF_") != std::string::npos) {
 				collectedVariableNames.emplace_back(a_name);
 			}
@@ -49,11 +49,11 @@ public:
 		std::list<const char*> collectedVariableNames;
 	};
 
-	struct AddDisplayBorder : RE::GFxValue::ObjectVisitor
+	class AddDisplayBorder : public RE::GFxValue::ObjectVisitor
 	{
 	public:
 		// Collect DF variables so we can erase them when reverting description
-		virtual void Visit(const char* a_name, const RE::GFxValue& a_val) override
+		void Visit(const char* a_name, const RE::GFxValue& a_val) override
 		{
 			RE::GFxValue borderColor;
 			RE::GFxValue borderNumber;
@@ -120,7 +120,7 @@ public:
 		logger::debug("Fixing up item {} with item type {} using description {}", itemName.GetString(), a_type.GetUInt(), a_description.GetString());
 
 		// Setup data for fixing
-		ItemCardFixer* fixer = new ItemCardFixer(a_itemCard, a_itemInfo, a_description.GetString(), (ItemCardType)a_type.GetUInt());
+		auto fixer = ItemCardFixer(a_itemCard, a_itemInfo, a_description.GetString(), (ItemCardType)a_type.GetUInt());
 
 		//if (wideBackground.IsUndefined()) {
 		//	// Second, apply a blank itemInfo to reset SWF elements
@@ -139,22 +139,19 @@ public:
 
 
 		// First, fix up item info to apply the description where needed
-		fixer->applyDescription();
+		fixer.applyDescription();
 
 		// Second, re-apply item info to get item card on the right frame for an object
-		fixer->itemCard.SetMember(itemInfoVar, a_itemInfo);
+		fixer.itemCard.SetMember(itemInfoVar, a_itemInfo);
 
 		// Third, fix up item card itself as needed
-		fixer->fixItemCard();
+		fixer.fixItemCard();
 
 		// Finally, apply debug features
 		if (Settings::IsDebug()) {
-			AddDisplayBorder borderMaker;
-			a_itemCard.VisitMembers(&borderMaker);
+			//AddDisplayBorder borderMaker;
+			//a_itemCard.VisitMembers(&borderMaker);
 		}
-
-		// delete fixer;
-		delete fixer;
 
 		appliedDescription.SetBoolean(true);
 		a_itemInfo.SetMember(appliedDescriptionVar, appliedDescription);
@@ -222,7 +219,6 @@ private:
 	}
 	void handleEffects();
 	void handleSoulLVL();
-	void fixTest(float x, float y, float width, float height);
 	void fixHTML(const char* a_displayVariable, const char* a_descriptionVariable);
 	void fixBackground(const char* a_displayLabel);
 

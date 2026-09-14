@@ -14,7 +14,7 @@ MergeMapperPluginAPI::IMergeMapperInterface001* MergeMapperPluginAPI::GetMergeMa
     // Dispatch a message to get the plugin interface from MergeMapper
     MergeMapperMessage mergeMapperMessage;
     const auto skseMessaging = SKSE::GetMessagingInterface();
-    skseMessaging->Dispatch(MergeMapperMessage::kMessage_GetInterface, (void*)&mergeMapperMessage,
+    skseMessaging->Dispatch(MergeMapperMessage::kMessage_GetInterface, &mergeMapperMessage,
                             sizeof(MergeMapperMessage*), MergeMapperPluginName);
     if (!mergeMapperMessage.GetApiFunction) {
         return nullptr;

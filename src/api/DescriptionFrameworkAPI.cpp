@@ -15,7 +15,7 @@ DescriptionFrameworkAPI::IDescriptionFrameworkInterface001* DescriptionFramework
 	// Dispatch a message to get the plugin interface from DescriptionFramework
 	DescriptionFrameworkMessage message;
 	const auto skseMessaging = SKSE::GetMessagingInterface();
-	skseMessaging->Dispatch(DescriptionFrameworkMessage::kMessage_GetInterface, (void*)&message,
+	skseMessaging->Dispatch(DescriptionFrameworkMessage::kMessage_GetInterface, &message,
 		sizeof(DescriptionFrameworkMessage*), DescriptionFrameworkPluginName);
 	if (!message.GetApiFunction) {
 		return nullptr;

@@ -1,24 +1,15 @@
 #pragma once
-#include <utility>
 
 class ConfigurationDatabase
 {
 public:
-	inline static ConfigurationDatabase*& GetSingleton()
-	{
-		static ConfigurationDatabase* _this_database = nullptr;
-		if (!_this_database)
-			_this_database = new ConfigurationDatabase();
-		return _this_database;
-	}
+	ConfigurationDatabase(const ConfigurationDatabase&) = delete;
+	void operator=(const ConfigurationDatabase&) = delete;
 
-	/*
-	@brief Safely de-allocate the memory space used by DataBase.
-	*/
-	static void Dealloc()
+	static ConfigurationDatabase& GetSingleton()
 	{
-		delete GetSingleton();
-		GetSingleton() = nullptr;
+		static ConfigurationDatabase instance;
+		return instance;
 	}
 
 	// Load entries from the various entry files
@@ -28,18 +19,22 @@ public:
 	std::string GetDescriptionForObject(RE::TESForm* a_object);
 
 	// Get object's description if it was set by a script
-	std::string GetScriptDescriptionForObject(RE::TESForm* a_object);
+	std::string GetScriptDescriptionForObject(const RE::TESForm* a_object);
 
 	// Set description from papyrus
-	void SetScriptDescriptionForObject(RE::TESForm* a_object, std::string a_description);
+	void SetScriptDescriptionForObject(const RE::TESForm* a_object, std::string a_description);
 
 	// Set from papyrus by a mod
-	void ResetScriptDescriptionnForObject(RE::TESForm* a_object);
+	void ResetScriptDescriptionForObject(RE::TESForm* a_object);
 
 private:
-	void parseConfigs(std::filesystem::path configFile);
+	ConfigurationDatabase()
+	{
+		Initialize();
+	}
+	void parseConfigs(const std::filesystem::path& configFile);
 	void parseLine(std::string line);
-	std::map<RE::FormID, std::pair<std::string, int>> tempMap;  // Temporary map while populating configs
+	std::recursive_mutex descriptionMutex;
 	std::map<RE::FormID, std::string> descriptionMap;                      // Map of descriptions as determined by initial configuration files
 	std::map<RE::FormID, std::string> scriptDescriptionMap;                // Map of descriptions as set from Papyrus at runtime, these always take priority
 };

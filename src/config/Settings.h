@@ -1,6 +1,6 @@
 #pragma once
+#include "../Utils.h"
 #include <SimpleIni.h>
-#include "Utils.h"
 
 class Settings
 {
@@ -44,7 +44,7 @@ public:
 		return std::format("<font size='{}'>", tweaks.size);
 	}
 
-	const char* GetFontFace() {
+	[[nodiscard]] const char* GetFontFace() const {
 		switch (tweaks.font) {
 		case EverywhereFont:
 			return "<font face='$EverywhereFont'>";
@@ -84,13 +84,9 @@ public:
 		return std::format("<p align='{}'>", tweaks.alignment);
 	}
 
-	const char* GetFontString()
+	std::string GetFontString()
 	{
-		std::string* font = new std::string(GetFontFace());
-		font->append(GetFontColor());
-		font->append(GetFontSize());
-		font->append(GetAlignment());
-		return font->c_str();
+		return GetFontFace() + GetFontColor() + GetFontSize() + GetAlignment();
 	}
 
 	struct Tweaks

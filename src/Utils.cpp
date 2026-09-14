@@ -8,9 +8,8 @@ namespace utils
 		std::vector<std::string> list;
 		std::string strCopy = a_string;
 		size_t pos = 0;
-		std::string token;
 		while ((pos = strCopy.find(a_delimiter)) != std::string::npos) {
-			token = strCopy.substr(0, pos);
+			std::string token = strCopy.substr(0, pos);
 			list.push_back(token);
 			strCopy.erase(0, pos + 1);
 		}
@@ -19,13 +18,18 @@ namespace utils
 	}
 
 
-	std::string GetEditorID(RE::FormID a_formID)
+	std::string GetEditorID(const RE::FormID a_formID)
 	{
 		static auto tweaks = GetModuleHandle(L"po3_Tweaks");
-		static auto function = reinterpret_cast<_GetFormEditorID>(GetProcAddress(tweaks, "GetFormEditorID"));
+		if (tweaks == nullptr) {
+			return {};
+		}
+
+		static auto function = reinterpret_cast<GetFormEditorIDFunc>(GetProcAddress(tweaks, "GetFormEditorID"));
 		if (function) {
 			return function(a_formID);
 		}
+
 		return {};
 	}
 
@@ -69,6 +73,6 @@ namespace utils
 		default:
 			return GetEditorID(a_form->GetFormID());
 		}
-	};
+	}
 }
 

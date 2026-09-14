@@ -1,20 +1,18 @@
 #include "Configuration.h"
-#include "Utils.h"
-#include "MergeMapperPluginAPI.h"
-#include <cstring>
+#include "../MergeMapperPluginAPI.h"
+#include "../Utils.h"
 
+static std::map<RE::FormID, std::pair<std::string, int>> tempMap;  // Temporary map while populating configs
 
 static std::string sanitizeLine(std::string line) {
-	auto parsingLine = std::string(line);
-
 	// Strip comments
-	auto trimmedLine = std::string(parsingLine); // trim the whitespace and check if the first character is # or ;
-	trimmedLine.erase(std::remove(trimmedLine.begin(), trimmedLine.end(), ' '), trimmedLine.end());
-	if (parsingLine[0] == '#' || parsingLine[0] == ';') {
+	auto trimmedLine = std::string(line); // trim the whitespace and check if the first character is # or ;
+	std::erase(trimmedLine, ' ');
+	if (trimmedLine[0] == '#' || trimmedLine[0] == ';') {
 		return "";
 	}
 
-	return parsingLine;
+	return line;
 }
 
 template <class T>
@@ -56,10 +54,10 @@ void ConfigurationDatabase::parseLine(std::string line)
 	if (line.empty()) {
 		return;
 	}
-	logger::info("	Parsing line {}", line);
+	logger::debug("	Parsing line {}", line);
 	auto tokens = utils::split_string(line, '|');
 	if (tokens.size() < 2) {
-		logger::error("		Invalid line setup, not enough info!");
+		logger::error("		Invalid line setup, not enough info: {}", line);
 		return;
 	}
 	auto object = GetFormFromString<RE::TESForm>(tokens[0]);
@@ -69,26 +67,26 @@ void ConfigurationDatabase::parseLine(std::string line)
 	if (tokens.size() >= 3) {
 		priority = std::stoi(tokens[2]);
 	}
-	if (!object || description.size() <= 0) {
+	if (!object || description.empty()) {
 		return;
 	}
 
 	if (tempMap.contains(object->formID) && tempMap[object->formID].second >= priority) {
 		auto& desc = tempMap[object->formID];
-		logger::info("		Entry is overwritten by \'{}\' with priority {}", desc.first, desc.second);
+		logger::debug("		Entry is overwritten by \'{}\' with priority {}", desc.first, desc.second);
 		return;
 	}
 
 	if (tempMap.contains(object->formID) && tempMap[object->formID].second < priority) {
 		auto& desc = tempMap[object->formID];
-		logger::info("		Overwriting previous entry \'{}\' with priority {}", desc.first, desc.second);
+		logger::debug("		Overwriting previous entry \'{}\' with priority {}", desc.first, desc.second);
 	}
 
 	tempMap[object->formID] = { description, priority };
-	logger::info("		Entry with description \"{}\" inserted successfully!", description);
+	logger::debug("		Entry with description \"{}\" inserted successfully!", description);
 }
 
-void ConfigurationDatabase::parseConfigs(std::filesystem::path configFile)
+void ConfigurationDatabase::parseConfigs(const std::filesystem::path& configFile)
 {
 	logger::info("Parsing file {}", configFile.string().c_str());
 	std::fstream file;
@@ -107,13 +105,13 @@ void ConfigurationDatabase::parseConfigs(std::filesystem::path configFile)
 	}
 }
 
-static bool filesystempathcompare(std::filesystem::path a_first, std::filesystem::path a_second) {
+static bool filesystempathcompare(const std::filesystem::path& a_first, const std::filesystem::path& a_second) {
 	// case insensitive filesystem path comparing
 	// if there's an easier way to do this and you're reading this, feel free to shoot a PR!
 	auto a_firstString = a_first.string();
 	auto a_secondString = a_second.string();
-	std::transform(a_firstString.cbegin(), a_firstString.cend(), a_firstString.begin(), [](unsigned char c) { return (char) std::tolower(c); });
-	std::transform(a_secondString.cbegin(), a_secondString.cend(), a_secondString.begin(), [](unsigned char c) { return (char) std::tolower(c); });
+	std::ranges::transform(std::as_const(a_firstString), a_firstString.begin(), [](unsigned char c) { return (char) std::tolower(c); });
+	std::ranges::transform(std::as_const(a_secondString), a_secondString.begin(), [](unsigned char c) { return (char) std::tolower(c); });
 	return a_firstString.compare(a_secondString) < 0;
 }
 
@@ -130,20 +128,17 @@ void ConfigurationDatabase::Initialize() {
 			}
 			 
 			filePaths.push_back(entry.path());
-		} catch(...) {
-			continue;
-		}		
+		} catch(...) {}
 	}
 
-	std::sort(filePaths.begin(), filePaths.end(), filesystempathcompare);
+	std::ranges::sort(filePaths, filesystempathcompare);
 
 	for (const auto& entry : filePaths) {
 		try {
-			logger::info("Parsing {}", entry.string());
+			logger::debug("Parsing {}", entry.string());
 			parseConfigs(entry);
 		} catch (...) {
 			logger::error("Error parsing {}", entry.string());
-			continue;
 		}	
 	}
 
@@ -162,6 +157,8 @@ std::string ConfigurationDatabase::GetDescriptionForObject(RE::TESForm* a_object
 		return "";
 	}
 
+	std::lock_guard mapLock(descriptionMutex);
+
 	if (scriptDescriptionMap.contains(a_object->formID)) {
 		return scriptDescriptionMap[a_object->formID]; 
 	}
@@ -174,8 +171,7 @@ std::string ConfigurationDatabase::GetDescriptionForObject(RE::TESForm* a_object
 	if (a_object->As<RE::BGSKeywordForm>()) {
 		auto keywordList = a_object->As<RE::BGSKeywordForm>();
 		for (auto keyword : keywordList->GetKeywords()) {
-			auto keywordDESC = GetDescriptionForObject(keyword);
-			if (keywordDESC != "") {
+			if (auto keywordDESC = GetDescriptionForObject(keyword); !keywordDESC.empty()) {
 				return keywordDESC;
 			}
 		}
@@ -184,11 +180,13 @@ std::string ConfigurationDatabase::GetDescriptionForObject(RE::TESForm* a_object
 	return "";
 }
 
-std::string ConfigurationDatabase::GetScriptDescriptionForObject(RE::TESForm* a_object)
+std::string ConfigurationDatabase::GetScriptDescriptionForObject(const RE::TESForm* a_object)
 {
 	if (!a_object) {
 		return "";
 	}
+
+	std::lock_guard mapLock(descriptionMutex);
 
 	if (scriptDescriptionMap.contains(a_object->formID)) {
 		return scriptDescriptionMap[a_object->formID];
@@ -198,30 +196,30 @@ std::string ConfigurationDatabase::GetScriptDescriptionForObject(RE::TESForm* a_
 }
 
 // Set description from papyrus
-void ConfigurationDatabase::SetScriptDescriptionForObject(RE::TESForm* a_object, std::string a_description)
+void ConfigurationDatabase::SetScriptDescriptionForObject(const RE::TESForm* a_object, std::string a_description)
 {
 	if (!a_object) {
 		return;
 	}
+
+	std::lock_guard mapLock(descriptionMutex);
 
 	if (scriptDescriptionMap.contains(a_object->formID)) {
 		scriptDescriptionMap.erase(a_object->formID);
 	}
 
 	scriptDescriptionMap[a_object->formID] = a_description;
-
-	return;
 }
 
 // Reset description from papyrus
-void ConfigurationDatabase::ResetScriptDescriptionnForObject(RE::TESForm* a_object) {
+void ConfigurationDatabase::ResetScriptDescriptionForObject(RE::TESForm* a_object) {
 	if (!a_object) {
 		return;
 	}
 
+	std::lock_guard mapLock(descriptionMutex);
+
 	if (scriptDescriptionMap.contains(a_object->formID)) {
 		scriptDescriptionMap.erase(a_object->formID);
 	}
-
-	return;
 }
