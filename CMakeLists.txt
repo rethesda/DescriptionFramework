@@ -14,7 +14,7 @@ endif()
 
 set(NAME "DescriptionFramework")
 set(AUTHOR "nightfallstorm")
-set(VERSION 2.1.2)
+set(VERSION 3.0.0)
 
 
 # For Clang-CL only, ensures IDEs like CLION properly see CLIB-NG headers
